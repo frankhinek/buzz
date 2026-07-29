@@ -44,4 +44,4 @@ Decided 2026-07-29:
 
 ## Next steps
 
-Phase 3 schemas are drafted in [payment-protocol.md](payment-protocol.md) and awaiting Frank's review (five open questions at the bottom of that page). Implementation starts after review. Full phasing in [integration-design.md](integration-design.md#build-phases).
+Phase 3 schemas are drafted in [payment-protocol.md](payment-protocol.md). Approved so far: 1:1-only DM payments (no group DMs in Phase 3) and desktop-first shipping. Three questions remain open (auto-claim, tip-marker optimism, spend-grant kind vs NIP-OA); see the review status section there. Implementation starts after review completes. Full phasing in [integration-design.md](integration-design.md#build-phases).

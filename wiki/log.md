@@ -47,3 +47,4 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 ## 2026-07-29 - Phase 3 schema draft
 
 - Drafted [payment-protocol.md](payment-protocol.md): 50001 payment envelope (gift-wrapped rumor, never relay-visible), 50002 receipt, 50003 public tip marker, 38173 NIP-87 federation announcement (admin-gated), 38180 agent spend-grant sketch. Five open questions listed for Frank's review; no implementation yet.
+- Frank approved: group DMs out of scope for Phase 3, and desktop-first shipping. Auto-claim, tip-marker optimism, and the spend-grant kind question remain open.

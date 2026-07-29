@@ -107,10 +107,15 @@ Enforcement cannot live at the relay (spends are wallet-local and federation-sid
 
 Design only in Phase 3; implementation is Phase 5.
 
-## Open questions for review
+## Review status
+
+Approved by Frank 2026-07-29:
+
+- **Group DMs are out of scope** for Phase 3 (notes are single-claimer; a group payment is first-reader-wins). 1:1 DM payments only.
+- **Desktop-first shipping.** Kind 1059 is not in the mobile kind mirror today, so mobile cannot see DM payments until the FRB wallet work (Phase 4) plus gift-wrap support land.
+
+Still open:
 
 1. **Auto-claim on unwrap** (proposed: yes, immediately) vs claim-on-view. Auto-claim wins the cancel race and removes bearer data fastest, but means receiving a DM moves money without a user gesture.
-2. **Group DMs are out of scope** for Phase 3 (notes are single-claimer; a group payment is first-reader-wins). Acceptable?
-3. **Tip marker optimism**: marker renders before any proof of claim. Acceptable for tips, or should tips wait for a public-ish acknowledgment (which leaks recipient wallet activity)?
-4. **Kind 38180 vs extending NIP-OA** for the spend grant.
-5. **Mobile**: kind 1059 is not in the mobile kind mirror today, so mobile cannot see DM payments until the FRB wallet work (Phase 4) plus gift-wrap support land. Fine to ship desktop-first?
+2. **Tip marker optimism**: marker renders before any proof of claim. Acceptable for tips, or should tips wait for a public-ish acknowledgment (which leaks recipient wallet activity)?
+3. **Kind 38180 vs extending NIP-OA** for the spend grant.
