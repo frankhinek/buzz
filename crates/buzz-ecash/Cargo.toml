@@ -11,6 +11,7 @@ description = "Fedimint e-cash wallet core for Buzz"
 # Fedimint crates pin exact workspace versions internally; keep the whole
 # family on one release and bump them together.
 fedimint-client = "0.11.1"
+fedimint-connectors = "0.11.1"
 fedimint-core = "0.11.1"
 fedimint-mint-client = "0.11.1"
 fedimint-ln-client = "0.11.1"
@@ -27,3 +28,18 @@ fedimint-rocksdb = "0.11.1"
 # declaring it here fixes netwatch through feature unification. Drop when
 # fedimint moves past iroh 0.35.
 socket2 = { version = "0.5", features = ["all"] }
+
+# fedimint client APIs return anyhow::Error — wrapped into WalletError::Federation
+anyhow = { workspace = true }
+# Reissue completion is awaited via the operation update stream
+futures-util = { workspace = true }
+# WalletInfo / SpendResult are serialized by buzz-cli
+serde = { workspace = true }
+# WalletError enum
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# Scratch wallet data dirs in the live-federation integration test
+tempfile = "3"
+# Async test harness — multi-thread flavor required (rocksdb blocks in place)
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

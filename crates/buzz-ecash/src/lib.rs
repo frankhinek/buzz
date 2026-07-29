@@ -1,12 +1,19 @@
 //! Fedimint e-cash wallet core for Buzz.
 //!
-//! Phase 0 spike: proves the fedimint client stack resolves and compiles
-//! inside the Buzz workspace. Real wallet operations (join, balance, spend,
-//! reissue) land in Phase 1. See `wiki/integration-design.md`.
+//! Wraps the fedimint client stack (v0.11) in a small async [`Wallet`] API:
+//! join a federation from an invite code, reopen an existing wallet, check
+//! the balance, spend e-cash out of band, and reissue received notes. See
+//! `wiki/integration-design.md` for the integration plan.
+
+mod error;
+mod wallet;
+
+pub use error::WalletError;
+pub use wallet::{SpendResult, Wallet, WalletInfo};
 
 use fedimint_core::invite_code::InviteCode;
 
-/// Handle type Buzz wallet code will hold once a client is opened (Phase 1).
+/// Handle type Buzz wallet code holds once a client is opened.
 pub type WalletClient = fedimint_client::ClientHandleArc;
 
 /// Parse a bech32 `fed1…` federation invite code and return the federation
