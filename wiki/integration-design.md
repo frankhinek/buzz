@@ -44,6 +44,16 @@ The DM path needs no relay changes at all (everything rides kind 1059). New kind
 4. **Mobile.** flutter_rust_bridge infra + wallet screens. The biggest single lift ([buzz.md](buzz.md#clients)).
 5. **Ambitious layer.** Agent wallets (implementing the Phase 3 spend-policy design), zap-like tipping UX, Lightning interop via gateway, Mutinynet staging federation.
 
+## Phase 0 findings
+
+Spike passed 2026-07-29. `crates/buzz-ecash` (fedimint-client + mint + ln + lnv2 + bip39 + rocksdb, all `0.11.1`) compiles, tests, and passes clippy/fmt/cargo-deny in the root workspace, and resolves + compiles under `desktop/src-tauri`.
+
+- **secp256k1 skew: non-issue.** fedimint's bitcoin 0.32 stack unified onto the existing secp256k1 0.29.1. Duplicate crates after the spike: iroh x3 (0.35 fedimint, 0.90 fedimint "iroh-next", 1.0.2 buzz-relay-mesh), netwatch x3, socket2 x2, hickory-proto x2. All `warn`-level under `[bans]`.
+- **netwatch 0.5.0 build break + workaround.** fedimint-connectors pins iroh 0.35 with default features off, so nothing enables socket2's `all` feature and netwatch 0.5.0 (which uses `all`-gated items without declaring the feature) fails to compile. Fix: buzz-ecash declares `socket2 = { version = "0.5", features = ["all"] }`; drop it when fedimint moves past iroh 0.35.
+- **fedimint-wallet-client excluded.** On-chain peg-in/out is out of scope for chat e-cash, and the module drags in three RUSTSEC-flagged unmaintained proc-macro crates. Mint + lightning modules cover our flows.
+- **Advisory triage in `deny.toml`.** Documented ignores added for: hickory-proto 0.25.2 DoS pair (via iroh 0.90, fix line unreachable), rustls-webpki 0.102.8 cert-validation quad (via iroh 0.35, only fedimint's own guardian connections use it, Buzz TLS is on the fixed 0.103 line), atomic-polyfill (target-gated embedded fallback, never compiled), proc-macro-error (compile-time doc macro via aquamarine). All tagged "remove when fedimint bumps iroh".
+- **Dev-loop assets confirmed.** fedimint publishes prebuilt `aarch64-apple-darwin` tarballs for devimint and the full binary set (fedimintd, fedimint-cli, gatewayd) on each release; nix and docker are also available locally. Regtest federation setup is pending.
+
 ## Non-goals (for now)
 
 - Trustless public tipping (needs P2PK-style locking Fedimint doesn't have).

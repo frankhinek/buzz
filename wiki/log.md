@@ -15,3 +15,9 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 
 - CLI-first build order, per-community federation config, hybrid payment visibility (E2E DMs, optional public tip markers), agent spend-policy designed in Phase 3 and built in Phase 5, kinds in the 50000-50999 block. Record in [project.md](project.md#decisions).
 - Next up: Phase 0 dependency spike per [integration-design.md](integration-design.md#build-phases).
+
+## 2026-07-29 - Phase 0 dependency spike
+
+- Added `crates/buzz-ecash` with the fedimint 0.11.1 client stack (mint + ln + lnv2, no on-chain wallet module). Compiles + tests + clippy/fmt/deny green in the root workspace; resolves and compiles under `desktop/src-tauri` too.
+- secp256k1 skew turned out to be a non-issue. The real friction was iroh: fedimint exact-pins iroh 0.35 + 0.90, breaking netwatch 0.5.0 (socket2 `all`-feature workaround applied) and importing RUSTSEC baggage (documented ignores in `deny.toml`).
+- Findings recorded in [integration-design.md](integration-design.md#phase-0-findings). Remaining Phase 0 item: stand up the devimint regtest federation (prebuilt Apple Silicon binaries exist).

@@ -10,6 +10,8 @@ Buzz users hold and send Bitcoin e-cash inside the app. Wallet lives on each dev
 
 Work happens on a public fork: `origin` = [frankhinek/buzz](https://github.com/frankhinek/buzz), `upstream` = [block/buzz](https://github.com/block/buzz) (Frank has read-only access upstream). Merge freely in the fork, sync `main` from upstream, PR to upstream only if this graduates.
 
+`2026-07-29`: **Phase 0 dependency spike passed.** `crates/buzz-ecash` compiles with the fedimint 0.11.1 stack in both the root workspace and `desktop/src-tauri`. Findings in [integration-design.md](integration-design.md#phase-0-findings). Next: the devimint regtest loop, then the Phase 1 CLI wallet.
+
 Headline findings:
 
 - Buzz has zero payments code today. Clean slate. Details in [buzz.md](buzz.md#existing-payments-surface).
@@ -29,9 +31,9 @@ Decided 2026-07-29:
 
 ## Risks
 
-- Pre-1.0 API churn in fedimint crates, exact-version lockstep pinning, quarterly bump ritual.
-- Heavy dependency tree compiled in two separate cargo workspaces (root + `desktop/src-tauri`).
-- `secp256k1` version skew between nostr 0.44 and fedimint's bitcoin 0.32 stack. Phase 0 exists to de-risk this.
+- Pre-1.0 API churn in fedimint crates, exact-version lockstep pinning, quarterly bump ritual. Phase 0 confirmed a second cost: fedimint's exact iroh pins (0.35 + 0.90) drag in old duplicates carrying RUSTSEC advisories, so each fedimint bump means re-triaging `deny.toml` ignores.
+- Heavy dependency tree compiled in two separate cargo workspaces (root + `desktop/src-tauri`). Confirmed workable in Phase 0.
+- ~~`secp256k1` version skew~~ resolved: fedimint's bitcoin 0.32 stack unified onto the workspace's existing secp256k1 0.29.1, no new duplicate.
 - No P2PK note locking in Fedimint: in-flight e-cash is claimable by whoever reads it, so encryption is mandatory and trustless public tipping (nutzap-style) is off the table for now.
 - Recipients must join the sender's federation. Cross-federation means a Lightning gateway hop.
 - Mobile FFI bridge is net-new build infrastructure.
