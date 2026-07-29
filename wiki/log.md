@@ -21,3 +21,9 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 - Added `crates/buzz-ecash` with the fedimint 0.11.1 client stack (mint + ln + lnv2, no on-chain wallet module). Compiles + tests + clippy/fmt/deny green in the root workspace; resolves and compiles under `desktop/src-tauri` too.
 - secp256k1 skew turned out to be a non-issue. The real friction was iroh: fedimint exact-pins iroh 0.35 + 0.90, breaking netwatch 0.5.0 (socket2 `all`-feature workaround applied) and importing RUSTSEC baggage (documented ignores in `deny.toml`).
 - Findings recorded in [integration-design.md](integration-design.md#phase-0-findings). Remaining Phase 0 item: stand up the devimint regtest federation (prebuilt Apple Silicon binaries exist).
+
+## 2026-07-29 - Phase 0 complete: devimint dev loop verified
+
+- Booted a headless devimint regtest federation (4 guardians, bitcoind, gateways) from the local fedimint checkout at `/Users/frank/Developer/fedimint` (v0.11.1, warm nix + cargo caches made it fast).
+- `buzz-ecash` parsed the live invite code and derived the same federation id the federation reports (`fedimint-cli info`). Repeatable via the new ignored test and the [dev loop](integration-design.md#dev-loop) recipe.
+- Phase 1 (CLI wallet: join/balance/spend/reissue) is unblocked.

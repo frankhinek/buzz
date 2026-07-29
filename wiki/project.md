@@ -10,7 +10,7 @@ Buzz users hold and send Bitcoin e-cash inside the app. Wallet lives on each dev
 
 Work happens on a public fork: `origin` = [frankhinek/buzz](https://github.com/frankhinek/buzz), `upstream` = [block/buzz](https://github.com/block/buzz) (Frank has read-only access upstream). Merge freely in the fork, sync `main` from upstream, PR to upstream only if this graduates.
 
-`2026-07-29`: **Phase 0 dependency spike passed.** `crates/buzz-ecash` compiles with the fedimint 0.11.1 stack in both the root workspace and `desktop/src-tauri`. Findings in [integration-design.md](integration-design.md#phase-0-findings). Next: the devimint regtest loop, then the Phase 1 CLI wallet.
+`2026-07-29`: **Phase 0 complete.** `crates/buzz-ecash` compiles with the fedimint 0.11.1 stack in both the root workspace and `desktop/src-tauri`, and a headless devimint regtest federation boots locally, with buzz-ecash validating its real invite code end-to-end. Findings in [integration-design.md](integration-design.md#phase-0-findings), dev loop in [integration-design.md](integration-design.md#dev-loop). Next: the Phase 1 CLI wallet.
 
 Headline findings:
 

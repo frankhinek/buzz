@@ -52,7 +52,26 @@ Spike passed 2026-07-29. `crates/buzz-ecash` (fedimint-client + mint + ln + lnv2
 - **netwatch 0.5.0 build break + workaround.** fedimint-connectors pins iroh 0.35 with default features off, so nothing enables socket2's `all` feature and netwatch 0.5.0 (which uses `all`-gated items without declaring the feature) fails to compile. Fix: buzz-ecash declares `socket2 = { version = "0.5", features = ["all"] }`; drop it when fedimint moves past iroh 0.35.
 - **fedimint-wallet-client excluded.** On-chain peg-in/out is out of scope for chat e-cash, and the module drags in three RUSTSEC-flagged unmaintained proc-macro crates. Mint + lightning modules cover our flows.
 - **Advisory triage in `deny.toml`.** Documented ignores added for: hickory-proto 0.25.2 DoS pair (via iroh 0.90, fix line unreachable), rustls-webpki 0.102.8 cert-validation quad (via iroh 0.35, only fedimint's own guardian connections use it, Buzz TLS is on the fixed 0.103 line), atomic-polyfill (target-gated embedded fallback, never compiled), proc-macro-error (compile-time doc macro via aquamarine). All tagged "remove when fedimint bumps iroh".
-- **Dev-loop assets confirmed.** fedimint publishes prebuilt `aarch64-apple-darwin` tarballs for devimint and the full binary set (fedimintd, fedimint-cli, gatewayd) on each release; nix and docker are also available locally. Regtest federation setup is pending.
+- **Dev loop verified.** A headless devimint regtest federation (4 guardians + bitcoind + LND/LDK gateways) boots from the local fedimint checkout, and `buzz-ecash` parses its real invite code to the exact federation id the guardians report. See the dev loop section below.
+
+## Dev loop
+
+The local fedimint checkout at `/Users/frank/Developer/fedimint` (tag `v0.11.1`, warm nix store and cargo build) is the dev federation host.
+
+- **Interactive**: `cd /Users/frank/Developer/fedimint && nix develop -c just mprocs`. Boots the regtest federation plus a funded client behind an mprocs TUI (`ctrl+a q` quits, teardown included).
+- **Headless / scripted** (inside `nix develop`):
+
+  ```bash
+  source scripts/_common.sh
+  build_workspace && add_target_dir_to_path
+  export FM_DEVIMINT_STATIC_DATA_DIR="$PWD/devimint/share"
+  devimint --link-test-dir "${CARGO_BUILD_TARGET_DIR:-$PWD/target}/devimint" \
+    dev-fed --exec <command>
+  ```
+
+  The exec'd command runs once the federation is ready, with `FM_INVITE_CODE` and `FM_CLIENT_DIR` set, and everything tears down when it exits.
+- **Gotcha**: the dev shell sets `CARGO_BUILD_TARGET_DIR` to `target-nix`, so never hardcode `target/` in paths (devimint dies with a bare `No such file or directory` if the link-test-dir parent is missing).
+- **Validating buzz-ecash against it**: `FM_INVITE_CODE=<code> FM_EXPECTED_FEDERATION_ID=<id> cargo test -p buzz-ecash -- --ignored` (the id comes from `fedimint-cli info | jq -r .federation_id`).
 
 ## Non-goals (for now)
 
