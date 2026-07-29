@@ -10,6 +10,8 @@ Buzz users hold and send Bitcoin e-cash inside the app. Wallet lives on each dev
 
 Work happens on a public fork: `origin` = [frankhinek/buzz](https://github.com/frankhinek/buzz), `upstream` = [block/buzz](https://github.com/block/buzz) (Frank has read-only access upstream). Merge freely in the fork, sync `main` from upstream, PR to upstream only if this graduates.
 
+`2026-07-29`: **Phase 2 complete.** The desktop app has a wallet (Settings -> Personal -> Wallet): join a federation by invite code, balance, send/receive e-cash via copy-paste notes, seed in the OS keychain. In-DM payments were deliberately deferred to Phase 3 so they ride the real payment-envelope kinds. Details in [integration-design.md](integration-design.md#phase-2-notes). Next: Phase 3 protocol formalization (payment envelope, receipts, tips, federation discovery, agent spend-policy sketch) plus the mnemonic-backup gap flagged in Phase 2 notes.
+
 `2026-07-29`: **Phase 1 complete.** `buzz-ecash` has a real `Wallet` API and `buzz wallet` CLI subcommands, verified end-to-end against a live devimint federation with a funded round trip (exact balance reconciliation, including the discovery that mint fees net reissued amounts below face value). Details in [integration-design.md](integration-design.md#phase-1-notes). Next: Phase 2 desktop wallet.
 
 `2026-07-29`: **Phase 0 complete.** `crates/buzz-ecash` compiles with the fedimint 0.11.1 stack in both the root workspace and `desktop/src-tauri`, and a headless devimint regtest federation boots locally, with buzz-ecash validating its real invite code end-to-end. Findings in [integration-design.md](integration-design.md#phase-0-findings), dev loop in [integration-design.md](integration-design.md#dev-loop). Next: the Phase 1 CLI wallet.

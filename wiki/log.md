@@ -33,3 +33,13 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 - `buzz-ecash::Wallet`: join/open (bip39 mnemonic, rocksdb), balance, info, out-of-band spend with `try_cancel_after`, reissue awaiting completion. Failed joins clean the data dir so retries work.
 - `buzz wallet join|balance|spend|reissue|info` in buzz-cli, matching CLI conventions (JSON out, exit codes, `BUZZ_WALLET_DIR`).
 - Live e2e against devimint: joined, funded 100k msat from the devimint client, reissued (net 95,774 after mint fees), spent 20k back, `fedimint-cli` reissued it, final balance reconciled exactly. Implementation notes in [integration-design.md](integration-design.md#phase-1-notes).
+
+## 2026-07-29 - Fee semantics correction
+
+- Frank: older-fedimintd federations charged no mint fees; newer ones do. Code was already fee-agnostic; wiki wording corrected to "fees are federation-dependent, 0 or more".
+
+## 2026-07-29 - Phase 2 complete: desktop wallet
+
+- buzz-ecash gained mnemonic-injection APIs; desktop stores the seed in the keyring (`ecash_mnemonic:<federation_id>`), never on disk. Injected-mnemonic flow verified against a live devimint federation.
+- Tauri commands (`wallet_*`) + Settings -> Personal -> Wallet panel (join / balance / send / receive), mock-bridge handlers, 4-test Playwright spec with distinct screenshots.
+- Flagged for later: no mnemonic export/backup (sign-out destroys funds), no keyring-unavailable fallback. Notes in [integration-design.md](integration-design.md#phase-2-notes).

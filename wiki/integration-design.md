@@ -69,6 +69,16 @@ Implementation notes worth remembering:
 - **Reissue is awaited** via the operation update stream and rejects notes from a different federation by id prefix before submitting.
 - Lightning modules (ln + lnv2) are registered so federation configs parse, but no lightning send/receive API is exposed yet. `Wallet` needs a multi-thread tokio runtime.
 
+## Phase 2 notes
+
+Complete 2026-07-29. The desktop app has a working e-cash wallet: Settings -> Personal -> Wallet.
+
+- **Tauri commands**: `wallet_status/join/balance/info/spend/reissue/lock` in `desktop/src-tauri/src/commands/ecash_wallet.rs`, serialized on one mutex over the open `Wallet` handle. Status lazily auto-opens. Errors are strings (house convention).
+- **Seed in the OS keychain**: buzz-ecash gained `generate_mnemonic`/`join_with_mnemonic`/`open_with_mnemonic` so callers own persistence. Desktop stores the mnemonic in the shared `SecretStore` keyring blob under `ecash_mnemonic:<federation_id>`, written before the join and rolled back if it fails. A wallet dir whose mnemonic is missing surfaces as a locked-funds error, not "no wallet".
+- **One wallet per app** (not per community): data at `<app_data_dir>/ecash/<federation_id>/`; joins for a second federation are refused naming the existing one. Per-community wallets are future work; `wallet_lock` exists for the frontend to drop the handle on community switch.
+- **UI**: `desktop/src/features/ecash-wallet/` + a Settings section. Balance in sats with exact msat secondary; non-mainnet network badge; send produces the notes string in a dialog with a treat-as-cash warning and an overpay callout when the actual note value exceeds the request; receive shows "notes worth X; balance now Y" without assuming fees either way. Mock-bridge `wallet_*` handlers + a 4-test Playwright spec with screenshots (`desktop/test-results/wallet-screenshots/`).
+- **Known limitations**: sign-out / boot-reset wipes both the keyring blob and `ecash/`, making funds unrecoverable — there is no mnemonic export/backup yet, and the UI does not warn about sign-out. No keyring-unavailable fallback (identity has a file fallback; the wallet deliberately does not). No lightning surface. These belong on the Phase 3+ list.
+
 ## Dev loop
 
 The local fedimint checkout at `/Users/frank/Developer/fedimint` (tag `v0.11.1`, warm nix store and cargo build) is the dev federation host.
