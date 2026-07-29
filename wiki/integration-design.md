@@ -54,6 +54,21 @@ Spike passed 2026-07-29. `crates/buzz-ecash` (fedimint-client + mint + ln + lnv2
 - **Advisory triage in `deny.toml`.** Documented ignores added for: hickory-proto 0.25.2 DoS pair (via iroh 0.90, fix line unreachable), rustls-webpki 0.102.8 cert-validation quad (via iroh 0.35, only fedimint's own guardian connections use it, Buzz TLS is on the fixed 0.103 line), atomic-polyfill (target-gated embedded fallback, never compiled), proc-macro-error (compile-time doc macro via aquamarine). All tagged "remove when fedimint bumps iroh".
 - **Dev loop verified.** A headless devimint regtest federation (4 guardians + bitcoind + LND/LDK gateways) boots from the local fedimint checkout, and `buzz-ecash` parses its real invite code to the exact federation id the guardians report. See the dev loop section below.
 
+## Phase 1 notes
+
+Complete 2026-07-29. `buzz-ecash` gained a real `Wallet` (`join`/`open`/`balance`/`info`/`spend`/`reissue` over fedimint-client 0.11) and `buzz-cli` gained `buzz wallet join|balance|spend|reissue|info` (data dir via `--data-dir` / `BUZZ_WALLET_DIR` / platform default; JSON out; federation errors exit 2). Verified end-to-end against a live devimint federation: join, fund with 100k msat from the devimint client, reissue, spend 20k back, balances reconcile exactly.
+
+Implementation notes worth remembering:
+
+- **Join flow** mirrors fedimint-cli: `Client::builder() -> preview(connectors, invite) -> join(db, RootSecret::StandardDoubleDerive(bip39))`. The mnemonic entropy is also stored inside the client db so standard fedimint tooling can open the wallet dir.
+- **Mnemonic storage**: `mnemonic.txt` (0600, `create_new`) in the wallet dir is the source of truth for `open`. File storage is a Phase 1 compromise; desktop moves it to the keychain.
+- **A failed join cleans the dir** (mnemonic, `client.db/`, sibling `client.db.lock`), so retries work instead of dying `AlreadyInitialized`.
+- **Connectors**: `ConnectorRegistry::build_from_client_defaults()` initializes connectors lazily per URL scheme, so iroh never spins up for `ws://` federations.
+- **Spend allows overpay** (`SelectNotesWithAtleastAmount`, fedimint-cli's behavior): exact-amount selection fails when denominations can't represent the amount. Callers must read `amount_msat` from the result.
+- **Fees are real**: reissue returns note face value, but the federation's mint fees net the balance lower (observed on devimint: 100,000 msat face -> 95,774 msat net). Payment UX must not assume face value == received balance.
+- **Reissue is awaited** via the operation update stream and rejects notes from a different federation by id prefix before submitting.
+- Lightning modules (ln + lnv2) are registered so federation configs parse, but no lightning send/receive API is exposed yet. `Wallet` needs a multi-thread tokio runtime.
+
 ## Dev loop
 
 The local fedimint checkout at `/Users/frank/Developer/fedimint` (tag `v0.11.1`, warm nix store and cargo build) is the dev federation host.

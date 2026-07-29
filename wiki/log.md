@@ -27,3 +27,9 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 - Booted a headless devimint regtest federation (4 guardians, bitcoind, gateways) from the local fedimint checkout at `/Users/frank/Developer/fedimint` (v0.11.1, warm nix + cargo caches made it fast).
 - `buzz-ecash` parsed the live invite code and derived the same federation id the federation reports (`fedimint-cli info`). Repeatable via the new ignored test and the [dev loop](integration-design.md#dev-loop) recipe.
 - Phase 1 (CLI wallet: join/balance/spend/reissue) is unblocked.
+
+## 2026-07-29 - Phase 1 complete: CLI wallet
+
+- `buzz-ecash::Wallet`: join/open (bip39 mnemonic, rocksdb), balance, info, out-of-band spend with `try_cancel_after`, reissue awaiting completion. Failed joins clean the data dir so retries work.
+- `buzz wallet join|balance|spend|reissue|info` in buzz-cli, matching CLI conventions (JSON out, exit codes, `BUZZ_WALLET_DIR`).
+- Live e2e against devimint: joined, funded 100k msat from the devimint client, reissued (net 95,774 after mint fees), spent 20k back, `fedimint-cli` reissued it, final balance reconciled exactly. Implementation notes in [integration-design.md](integration-design.md#phase-1-notes).
