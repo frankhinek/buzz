@@ -1,10 +1,13 @@
 //! Async e-cash wallet built on the fedimint client stack.
 //!
 //! A [`Wallet`] owns a fedimint client joined to a single federation. The
-//! wallet directory holds the rocksdb client database (`client.db/`) and the
-//! BIP-39 mnemonic that derives the client's root secret (`mnemonic.txt`,
-//! mode 0600). Phase 1 keeps the mnemonic in a file; moving it into the
-//! platform keychain is planned for the desktop integration.
+//! wallet directory holds the rocksdb client database (`client.db/`) and,
+//! for the file-based flow ([`Wallet::join`] / [`Wallet::open`]), the BIP-39
+//! mnemonic that derives the client's root secret (`mnemonic.txt`, mode
+//! 0600). Callers that keep the mnemonic elsewhere (e.g. the desktop app's
+//! OS keychain) use the injection flow instead:
+//! [`Wallet::generate_mnemonic`], [`Wallet::join_with_mnemonic`], and
+//! [`Wallet::open_with_mnemonic`] — no `mnemonic.txt` is ever written.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -78,6 +81,21 @@ pub struct Wallet {
 }
 
 impl Wallet {
+    /// Generate a fresh 12-word BIP-39 mnemonic suitable for
+    /// [`Wallet::join_with_mnemonic`].
+    ///
+    /// The caller owns persistence (e.g. the desktop stores it in the OS
+    /// keychain). Nothing is written to disk by this call.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WalletError::Mnemonic`] if entropy generation fails.
+    pub fn generate_mnemonic() -> Result<String, WalletError> {
+        Ok(Mnemonic::generate(MNEMONIC_WORD_COUNT)
+            .map_err(|e| WalletError::Mnemonic(e.to_string()))?
+            .to_string())
+    }
+
     /// Create a new wallet under `data_dir` and join the federation described
     /// by `invite_code`.
     ///
@@ -94,10 +112,7 @@ impl Wallet {
     /// the join itself fails.
     pub async fn join(data_dir: impl AsRef<Path>, invite_code: &str) -> Result<Self, WalletError> {
         let data_dir = data_dir.as_ref();
-        let invite: InviteCode = invite_code
-            .trim()
-            .parse()
-            .map_err(|e| WalletError::InvalidInviteCode(format!("{e:#}")))?;
+        let invite = parse_invite(invite_code)?;
 
         std::fs::create_dir_all(data_dir).map_err(|source| WalletError::DataDir {
             path: data_dir.to_path_buf(),
@@ -112,13 +127,70 @@ impl Wallet {
             .map_err(|e| WalletError::Mnemonic(e.to_string()))?;
         write_mnemonic_file(&mnemonic_file, &mnemonic)?;
 
-        match join_inner(data_dir, &invite, &mnemonic).await {
-            Ok(client) => Ok(Self { client }),
+        match Self::join_parsed(data_dir, &invite, &mnemonic).await {
+            Ok(wallet) => Ok(wallet),
             Err(e) => {
                 // The dir was empty before this call, so a failed join must
-                // leave it empty again — otherwise the leftover mnemonic and
-                // half-initialized db make every retry fail AlreadyInitialized.
+                // leave it empty again — otherwise the leftover mnemonic
+                // makes every retry fail AlreadyInitialized. (join_parsed
+                // already removed the half-initialized db.)
                 let _ = std::fs::remove_file(&mnemonic_file);
+                Err(e)
+            }
+        }
+    }
+
+    /// Create a new wallet under `data_dir` using a caller-provided BIP-39
+    /// `mnemonic` (e.g. from [`Wallet::generate_mnemonic`]) and join the
+    /// federation described by `invite_code`.
+    ///
+    /// Unlike [`Wallet::join`], the mnemonic is NOT written to
+    /// `data_dir/mnemonic.txt` — the caller is responsible for keeping it
+    /// (the desktop app stores it in the OS keychain). The mnemonic entropy
+    /// is still stored inside the client database, mirroring fedimint-cli.
+    /// A failed join removes the client database again so the directory is
+    /// retryable.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WalletError::AlreadyInitialized`] if a wallet already exists
+    /// at `data_dir` (client database or `mnemonic.txt` present),
+    /// [`WalletError::InvalidInviteCode`] if the invite code fails to parse,
+    /// [`WalletError::Mnemonic`] if `mnemonic` fails to parse, and
+    /// [`WalletError::Federation`] if config download or the join itself
+    /// fails.
+    pub async fn join_with_mnemonic(
+        data_dir: impl AsRef<Path>,
+        invite_code: &str,
+        mnemonic: &str,
+    ) -> Result<Self, WalletError> {
+        let data_dir = data_dir.as_ref();
+        let invite = parse_invite(invite_code)?;
+        let mnemonic = parse_mnemonic(mnemonic)?;
+
+        std::fs::create_dir_all(data_dir).map_err(|source| WalletError::DataDir {
+            path: data_dir.to_path_buf(),
+            source,
+        })?;
+        if mnemonic_path(data_dir).exists() || data_dir.join(CLIENT_DB_DIR).exists() {
+            return Err(WalletError::AlreadyInitialized(data_dir.to_path_buf()));
+        }
+
+        Self::join_parsed(data_dir, &invite, &mnemonic).await
+    }
+
+    /// Shared fallible tail of [`Wallet::join`] and
+    /// [`Wallet::join_with_mnemonic`]: run the actual join and, on failure,
+    /// remove the half-initialized client database so a retry does not fail
+    /// [`WalletError::AlreadyInitialized`].
+    async fn join_parsed(
+        data_dir: &Path,
+        invite: &InviteCode,
+        mnemonic: &Mnemonic,
+    ) -> Result<Self, WalletError> {
+        match join_inner(data_dir, invite, mnemonic).await {
+            Ok(client) => Ok(Self { client }),
+            Err(e) => {
                 let _ = std::fs::remove_dir_all(data_dir.join(CLIENT_DB_DIR));
                 // fedimint-rocksdb holds its lock in a sibling file, not
                 // inside the db directory.
@@ -146,10 +218,40 @@ impl Wallet {
         }
 
         let mnemonic = read_mnemonic_file(&mnemonic_file)?;
+        Self::open_parsed(data_dir, &mnemonic).await
+    }
+
+    /// Reopen an existing wallet previously created with
+    /// [`Wallet::join_with_mnemonic`], deriving the root secret from the
+    /// caller-provided `mnemonic` instead of reading `data_dir/mnemonic.txt`.
+    ///
+    /// The presence of the client database is the initialized-check;
+    /// `mnemonic.txt` is not required to exist (and is ignored if it does).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WalletError::NotInitialized`] if no client database exists
+    /// at `data_dir`, [`WalletError::Mnemonic`] if `mnemonic` fails to
+    /// parse, and [`WalletError::Federation`] if the client fails to open.
+    pub async fn open_with_mnemonic(
+        data_dir: impl AsRef<Path>,
+        mnemonic: &str,
+    ) -> Result<Self, WalletError> {
+        let data_dir = data_dir.as_ref();
+        let mnemonic = parse_mnemonic(mnemonic)?;
+        if !data_dir.join(CLIENT_DB_DIR).exists() {
+            return Err(WalletError::NotInitialized(data_dir.to_path_buf()));
+        }
+        Self::open_parsed(data_dir, &mnemonic).await
+    }
+
+    /// Shared tail of [`Wallet::open`] and [`Wallet::open_with_mnemonic`]:
+    /// open the stored client database with the given root-secret mnemonic.
+    async fn open_parsed(data_dir: &Path, mnemonic: &Mnemonic) -> Result<Self, WalletError> {
         let db = open_database(data_dir).await?;
         let builder = client_builder().await?;
         let client = builder
-            .open(connectors().await?, db, root_secret(&mnemonic))
+            .open(connectors().await?, db, root_secret(mnemonic))
             .await
             .map(Arc::new)
             .map_err(WalletError::Federation)?;
@@ -299,6 +401,23 @@ fn mnemonic_path(data_dir: &Path) -> PathBuf {
     data_dir.join(MNEMONIC_FILE)
 }
 
+/// Parse a federation invite code.
+fn parse_invite(invite_code: &str) -> Result<InviteCode, WalletError> {
+    invite_code
+        .trim()
+        .parse()
+        .map_err(|e| WalletError::InvalidInviteCode(format!("{e:#}")))
+}
+
+/// Parse a BIP-39 mnemonic phrase. The error message reports the parse
+/// failure only — never the phrase itself.
+fn parse_mnemonic(mnemonic: &str) -> Result<Mnemonic, WalletError> {
+    mnemonic
+        .trim()
+        .parse::<Mnemonic>()
+        .map_err(|e| WalletError::Mnemonic(e.to_string()))
+}
+
 /// Fallible tail of [`Wallet::join`]: open the db, store the entropy, and
 /// join the federation. The db handle is dropped on the error path before
 /// the caller removes the db directory.
@@ -399,4 +518,116 @@ async fn client_builder() -> Result<ClientBuilder, WalletError> {
     let mut builder = Client::builder().await.map_err(WalletError::Federation)?;
     builder.with_module_inits(registry);
     Ok(builder)
+}
+
+#[cfg(test)]
+mod tests {
+    use fedimint_core::config::FederationId;
+    use fedimint_core::util::SafeUrl;
+    use fedimint_core::PeerId;
+
+    use super::*;
+
+    /// A syntactically valid invite code that points nowhere — parses fine,
+    /// so tests exercise the checks that run before any network I/O.
+    fn offline_invite_code() -> String {
+        let url = SafeUrl::parse("wss://invalid.example.com/").expect("static url parses");
+        InviteCode::new(url, PeerId::from(0), FederationId::dummy(), None).to_string()
+    }
+
+    #[test]
+    fn generate_mnemonic_yields_twelve_parseable_words() {
+        let phrase = Wallet::generate_mnemonic().expect("generation succeeds");
+        assert_eq!(phrase.split_whitespace().count(), 12);
+        assert!(parse_mnemonic(&phrase).is_ok(), "round-trips through parse");
+    }
+
+    #[test]
+    fn generate_mnemonic_is_not_deterministic() {
+        let a = Wallet::generate_mnemonic().expect("generation succeeds");
+        let b = Wallet::generate_mnemonic().expect("generation succeeds");
+        assert_ne!(a, b, "two generated mnemonics must differ");
+    }
+
+    #[test]
+    fn parse_mnemonic_rejects_garbage_without_echoing_it() {
+        let secret_garbage = "correct horse battery staple";
+        let err = parse_mnemonic(secret_garbage).expect_err("garbage must not parse");
+        assert!(matches!(err, WalletError::Mnemonic(_)));
+        assert!(
+            !err.to_string().contains("horse"),
+            "error must not echo the input phrase: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn join_with_mnemonic_rejects_bad_invite_code() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mnemonic = Wallet::generate_mnemonic().expect("generation succeeds");
+        let result =
+            Wallet::join_with_mnemonic(dir.path().join("w"), "not-an-invite", &mnemonic).await;
+        assert!(matches!(result, Err(WalletError::InvalidInviteCode(_))));
+        assert!(
+            !dir.path().join("w").exists(),
+            "no wallet dir may be created for a bad invite"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn join_with_mnemonic_rejects_bad_mnemonic_before_touching_disk() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let result =
+            Wallet::join_with_mnemonic(dir.path().join("w"), &offline_invite_code(), "twelve bad")
+                .await;
+        assert!(matches!(result, Err(WalletError::Mnemonic(_))));
+        assert!(
+            !dir.path().join("w").exists(),
+            "no wallet dir may be created for a bad mnemonic"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn join_with_mnemonic_refuses_existing_client_db() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(CLIENT_DB_DIR)).expect("seed db dir");
+        let mnemonic = Wallet::generate_mnemonic().expect("generation succeeds");
+        let result =
+            Wallet::join_with_mnemonic(dir.path(), &offline_invite_code(), &mnemonic).await;
+        assert!(matches!(result, Err(WalletError::AlreadyInitialized(_))));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn join_with_mnemonic_refuses_existing_mnemonic_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(mnemonic_path(dir.path()), "placeholder\n").expect("seed mnemonic file");
+        let mnemonic = Wallet::generate_mnemonic().expect("generation succeeds");
+        let result =
+            Wallet::join_with_mnemonic(dir.path(), &offline_invite_code(), &mnemonic).await;
+        assert!(
+            matches!(result, Err(WalletError::AlreadyInitialized(_))),
+            "a file-based wallet in the dir must not be clobbered"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn open_with_mnemonic_requires_client_db() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mnemonic = Wallet::generate_mnemonic().expect("generation succeeds");
+        let result = Wallet::open_with_mnemonic(dir.path(), &mnemonic).await;
+        assert!(
+            matches!(result, Err(WalletError::NotInitialized(_))),
+            "an empty dir is not an initialized wallet"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn open_with_mnemonic_does_not_require_mnemonic_file() {
+        // The db-dir existing is the initialized-check; a bad mnemonic must
+        // surface as a Mnemonic error, not NotInitialized, proving the file
+        // was never consulted.
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(CLIENT_DB_DIR)).expect("seed db dir");
+        let result = Wallet::open_with_mnemonic(dir.path(), "not a mnemonic").await;
+        assert!(matches!(result, Err(WalletError::Mnemonic(_))));
+    }
 }
