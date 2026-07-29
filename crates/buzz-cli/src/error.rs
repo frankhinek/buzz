@@ -39,6 +39,11 @@ pub enum CliError {
     #[error("delivery unknown: {0}")]
     DeliveryUnknown(String),
 
+    /// E-cash federation failure (`buzz wallet` subcommands) — config
+    /// download, network, or consensus errors from the fedimint client.
+    #[error("federation error: {0}")]
+    Federation(String),
+
     /// Catch-all for unexpected failures
     #[error("{0}")]
     Other(String),
@@ -103,6 +108,7 @@ pub fn exit_code(e: &CliError) -> i32 {
         CliError::Conflict(_) => 5,
         CliError::NotFound(_) => 1,
         CliError::DeliveryUnknown(_) => 2,
+        CliError::Federation(_) => 2,
         CliError::Other(_) => 4,
     }
 }
@@ -125,6 +131,7 @@ pub fn print_error(e: &CliError) {
         CliError::Conflict(_) => "conflict",
         CliError::NotFound(_) => "not_found",
         CliError::DeliveryUnknown(_) => "delivery_unknown",
+        CliError::Federation(_) => "federation_error",
         CliError::Other(_) => "error",
     };
     let obj = serde_json::json!({
@@ -187,6 +194,9 @@ mod tests {
             "superseded".into()
         )));
         assert!(!is_retryable_error(&CliError::NotFound("gone".into())));
+        assert!(!is_retryable_error(&CliError::Federation(
+            "guardians unreachable".into()
+        )));
         assert!(!is_retryable_error(&CliError::Other("unexpected".into())));
     }
 

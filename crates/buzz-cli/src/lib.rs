@@ -71,7 +71,9 @@ Configuration (flags override env vars):
   BUZZ_PRIVATE_KEY   Nostr private key (hex or nsec)  [required]
   BUZZ_AUTH_TAG      NIP-OA auth tag JSON  [optional]
 
-The 'pack' subcommand runs locally and does not require a relay connection.
+The 'pack' and 'wallet' subcommands run locally and do not require a relay
+connection. Wallet state lives in BUZZ_WALLET_DIR (default: platform data
+dir under buzz/wallet).
 
 Exit codes: 0=ok  1=bad input  2=relay/network error  3=auth error  4=other  5=write conflict
 Errors are JSON on stderr: {\"error\": \"<category>\", \"message\": \"<detail>\"}"
@@ -236,6 +238,9 @@ enum Cmd {
     /// Community moderation — reports queue, bans, timeouts, audit trail
     #[command(subcommand)]
     Moderation(ModerationCmd),
+    /// Fedimint e-cash wallet (local, talks to a federation, not the relay)
+    #[command(subcommand)]
+    Wallet(WalletCmd),
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -1743,6 +1748,62 @@ pub enum ModerationCmd {
     },
 }
 
+/// Fedimint e-cash wallet commands.
+///
+/// Wallet commands run locally against a federation — they need no relay
+/// connection and no `BUZZ_PRIVATE_KEY`. The wallet data directory is
+/// resolved from `--data-dir`, then `BUZZ_WALLET_DIR`, then the platform
+/// data dir under `buzz/wallet`.
+#[derive(Subcommand)]
+pub enum WalletCmd {
+    /// Join a federation with an invite code (creates the wallet)
+    #[command(
+        after_help = "Examples:\n  buzz wallet join --invite-code fed1...\n  buzz wallet join --invite-code fed1... --data-dir /tmp/wallet"
+    )]
+    Join {
+        /// Federation invite code (fed1...)
+        #[arg(long)]
+        invite_code: String,
+        /// Wallet data directory
+        #[arg(long, env = "BUZZ_WALLET_DIR")]
+        data_dir: Option<std::path::PathBuf>,
+    },
+    /// Show the spendable e-cash balance in millisatoshis
+    Balance {
+        /// Wallet data directory
+        #[arg(long, env = "BUZZ_WALLET_DIR")]
+        data_dir: Option<std::path::PathBuf>,
+    },
+    /// Spend e-cash: prepare out-of-band notes to hand to a recipient
+    #[command(
+        after_help = "Examples:\n  buzz wallet spend 20000\n  buzz wallet spend 20000 --timeout-secs 3600\n\nUnclaimed notes are reclaimed by this wallet after --timeout-secs."
+    )]
+    Spend {
+        /// Amount to spend in millisatoshis
+        amount_msat: u64,
+        /// Seconds before unclaimed notes are reclaimed (default: 1 day)
+        #[arg(long, default_value_t = 86400)]
+        timeout_secs: u64,
+        /// Wallet data directory
+        #[arg(long, env = "BUZZ_WALLET_DIR")]
+        data_dir: Option<std::path::PathBuf>,
+    },
+    /// Receive e-cash: redeem out-of-band notes into this wallet
+    Reissue {
+        /// Serialized out-of-band notes string from the sender
+        notes: String,
+        /// Wallet data directory
+        #[arg(long, env = "BUZZ_WALLET_DIR")]
+        data_dir: Option<std::path::PathBuf>,
+    },
+    /// Show wallet info: federation id, name, network, balance
+    Info {
+        /// Wallet data directory
+        #[arg(long, env = "BUZZ_WALLET_DIR")]
+        data_dir: Option<std::path::PathBuf>,
+    },
+}
+
 async fn run(cli: Cli) -> Result<(), CliError> {
     let relay_url = client::normalize_relay_url(&cli.relay);
 
@@ -1752,6 +1813,11 @@ async fn run(cli: Cli) -> Result<(), CliError> {
             PackCmd::Validate { path } => commands::pack::cmd_validate(path),
             PackCmd::Inspect { path } => commands::pack::cmd_inspect(path),
         };
+    }
+
+    // Wallet commands talk to a federation, not the relay — no key needed.
+    if let Cmd::Wallet(ref sub) = cli.command {
+        return commands::wallet::dispatch(sub).await;
     }
 
     // Auth: private key is required for all relay operations.
@@ -1801,7 +1867,7 @@ async fn run(cli: Cli) -> Result<(), CliError> {
         Cmd::Upload(sub) => commands::upload::dispatch(sub, &client).await,
         Cmd::Mem(sub) => commands::mem::dispatch(sub, &client).await,
         Cmd::Moderation(sub) => commands::moderation::dispatch(sub, &client, &cli.format).await,
-        Cmd::Pack(_) => unreachable!("handled above"),
+        Cmd::Pack(_) | Cmd::Wallet(_) => unreachable!("handled above"),
     }
 }
 
@@ -1863,6 +1929,7 @@ mod tests {
             "social",
             "upload",
             "users",
+            "wallet",
             "workflows",
         ];
 
@@ -2033,6 +2100,10 @@ mod tests {
                 "untimeout"
             ]
         );
+        assert_eq!(
+            names(&cmd, "wallet"),
+            vec!["balance", "info", "join", "reissue", "spend"]
+        );
     }
 
     #[test]
@@ -2055,6 +2126,7 @@ mod tests {
             ("social", 7),
             ("upload", 1),
             ("users", 5),
+            ("wallet", 5),
             ("workflows", 8),
         ];
 
