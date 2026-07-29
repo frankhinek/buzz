@@ -44,4 +44,4 @@ Decided 2026-07-29:
 
 ## Next steps
 
-Direction is decided, Phase 0 (dependency spike) is unblocked, then the CLI wallet. Full phasing in [integration-design.md](integration-design.md#build-phases).
+Phase 3 schemas are drafted in [payment-protocol.md](payment-protocol.md) and awaiting Frank's review (five open questions at the bottom of that page). Implementation starts after review. Full phasing in [integration-design.md](integration-design.md#build-phases).

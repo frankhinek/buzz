@@ -43,3 +43,7 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 - buzz-ecash gained mnemonic-injection APIs; desktop stores the seed in the keyring (`ecash_mnemonic:<federation_id>`), never on disk. Injected-mnemonic flow verified against a live devimint federation.
 - Tauri commands (`wallet_*`) + Settings -> Personal -> Wallet panel (join / balance / send / receive), mock-bridge handlers, 4-test Playwright spec with distinct screenshots.
 - Flagged for later: no mnemonic export/backup (sign-out destroys funds), no keyring-unavailable fallback. Notes in [integration-design.md](integration-design.md#phase-2-notes).
+
+## 2026-07-29 - Phase 3 schema draft
+
+- Drafted [payment-protocol.md](payment-protocol.md): 50001 payment envelope (gift-wrapped rumor, never relay-visible), 50002 receipt, 50003 public tip marker, 38173 NIP-87 federation announcement (admin-gated), 38180 agent spend-grant sketch. Five open questions listed for Frank's review; no implementation yet.

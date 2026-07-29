@@ -22,4 +22,5 @@ If you are an LLM session resuming this project: read this page, then [project.m
 | [fedimint.md](fedimint.md) | Fedimint protocol, e-cash mechanics, client SDKs, releases, running federations |
 | [ecash-over-nostr.md](ecash-over-nostr.md) | Sending e-cash through Nostr events: transport, NIP precedents, trust model |
 | [integration-design.md](integration-design.md) | Proposed Buzz+Fedimint architecture and build phases |
+| [payment-protocol.md](payment-protocol.md) | Phase 3 event schemas: payment envelope, receipts, tips, federation discovery |
 | [log.md](log.md) | Append-only session log |
