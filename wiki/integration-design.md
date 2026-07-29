@@ -65,7 +65,7 @@ Implementation notes worth remembering:
 - **A failed join cleans the dir** (mnemonic, `client.db/`, sibling `client.db.lock`), so retries work instead of dying `AlreadyInitialized`.
 - **Connectors**: `ConnectorRegistry::build_from_client_defaults()` initializes connectors lazily per URL scheme, so iroh never spins up for `ws://` federations.
 - **Spend allows overpay** (`SelectNotesWithAtleastAmount`, fedimint-cli's behavior): exact-amount selection fails when denominations can't represent the amount. Callers must read `amount_msat` from the result.
-- **Fees are real**: reissue returns note face value, but the federation's mint fees net the balance lower (observed on devimint: 100,000 msat face -> 95,774 msat net). Payment UX must not assume face value == received balance.
+- **Fees are federation-dependent, 0 or more.** Federations set up with older fedimintd versions charged no mint fees; newer ones (and the defaults going forward) do. Observed on a v0.11 devimint federation: 100,000 msat face -> 95,774 msat net after reissue. Never assume fees exist, never assume they don't: reissue returns note face value, balance returns what was actually credited, and payment UX (Phase 2+) should derive expected fees from the mint module's fee config or show measured deltas rather than hardcoding either case. The integration test asserts fee-agnostically (`0 < net <= face`-style bounds).
 - **Reissue is awaited** via the operation update stream and rejects notes from a different federation by id prefix before submitting.
 - Lightning modules (ln + lnv2) are registered so federation configs parse, but no lightning send/receive API is exposed yet. `Wallet` needs a multi-thread tokio runtime.
 
