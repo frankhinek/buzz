@@ -15,6 +15,28 @@ ignore = [
     # remove these when upstream catches up.
     { id = "RUSTSEC-2026-0194", reason = "transitive via rust-s3 and mesh-llm→plist; trusted-input XML only; no upstream fix available yet" },
     { id = "RUSTSEC-2026-0195", reason = "transitive via rust-s3 and mesh-llm→plist; trusted-input XML only; no upstream fix available yet" },
+    # hickory-proto 0.25.2: NSEC3 unbounded loop (0118) and O(n²) name
+    # compression (0119). Both DoS-class, in DNS validation/encoding paths.
+    # Transitive dep: buzz-ecash → fedimint-connectors → iroh 0.90 (exact-
+    # pinned), which pins hickory-proto 0.25; the fixed 0.26 line is already
+    # used by our own iroh 1.x. Remove when fedimint bumps past iroh 0.90.
+    { id = "RUSTSEC-2026-0118", reason = "transitive via fedimint-connectors→iroh 0.90; DoS-class; fixed line unreachable until fedimint bumps iroh" },
+    { id = "RUSTSEC-2026-0119", reason = "transitive via fedimint-connectors→iroh 0.90; DoS-class; fixed line unreachable until fedimint bumps iroh" },
+    # rustls-webpki 0.102.8 — four cert-validation advisories (0049/0098/0099/
+    # 0104). Duplicate old version pulled only by buzz-ecash → fedimint-
+    # connectors → iroh 0.35 (exact-pinned); Buzz's own TLS paths use the
+    # fixed 0.103 line. No patched 0.102.x exists. Remove when fedimint bumps iroh.
+    { id = "RUSTSEC-2026-0049", reason = "old duplicate via fedimint-connectors→iroh 0.35; buzz TLS uses fixed 0.103; no patched 0.102.x" },
+    { id = "RUSTSEC-2026-0098", reason = "old duplicate via fedimint-connectors→iroh 0.35; buzz TLS uses fixed 0.103; no patched 0.102.x" },
+    { id = "RUSTSEC-2026-0099", reason = "old duplicate via fedimint-connectors→iroh 0.35; buzz TLS uses fixed 0.103; no patched 0.102.x" },
+    { id = "RUSTSEC-2026-0104", reason = "old duplicate via fedimint-connectors→iroh 0.35; buzz TLS uses fixed 0.103; no patched 0.102.x" },
+    # atomic-polyfill 1.0.3 — unmaintained. Target-gated embedded fallback under
+    # heapless 0.7 (edge surfaced by iroh-base 0.35 feature unification); never
+    # compiled for any supported Buzz target.
+    { id = "RUSTSEC-2023-0089", reason = "target-gated embedded dep under heapless 0.7; never compiled for supported targets" },
+    # proc-macro-error 1.0.4 — unmaintained. Compile-time only, via aquamarine
+    # (doc-comment diagrams) in fedimint-client-module; no runtime code.
+    { id = "RUSTSEC-2024-0370", reason = "compile-time doc macro via aquamarine in fedimint tree; no runtime exposure" },
 ]
 
 [licenses]

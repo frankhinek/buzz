@@ -1,0 +1,29 @@
+[package]
+name = "buzz-ecash"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fedimint e-cash wallet core for Buzz"
+
+[dependencies]
+# Fedimint crates pin exact workspace versions internally; keep the whole
+# family on one release and bump them together.
+fedimint-client = "0.11.1"
+fedimint-core = "0.11.1"
+fedimint-mint-client = "0.11.1"
+fedimint-ln-client = "0.11.1"
+fedimint-lnv2-client = "0.11.1"
+# fedimint-wallet-client (on-chain peg-in/out) is deliberately absent: chat
+# e-cash needs mint + lightning only, and the wallet module drags in three
+# RUSTSEC-flagged unmaintained proc-macro crates. Revisit if on-chain UX is
+# ever in scope.
+fedimint-bip39 = "0.11.1"
+fedimint-rocksdb = "0.11.1"
+
+# netwatch 0.5 (via fedimint-connectors -> iroh 0.35, default-features off)
+# uses socket2 items gated behind the `all` feature without declaring it;
+# declaring it here fixes netwatch through feature unification. Drop when
+# fedimint moves past iroh 0.35.
+socket2 = { version = "0.5", features = ["all"] }
