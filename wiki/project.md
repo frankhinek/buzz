@@ -17,13 +17,15 @@ Headline findings:
 - `fedimint-client` (Rust, v0.11.1) is directly embeddable and is how every serious Fedimint app is built. Details in [fedimint.md](fedimint.md#client-sdk-options).
 - Desktop and CLI are native Rust hosts. Mobile is pure Dart with no FFI infra, the biggest single lift. Details in [buzz.md](buzz.md#clients).
 
-## Open decisions
+## Decisions
 
-1. **Which client first.** CLI is the cheapest proof of embedding. Desktop is the visible one.
-2. **Who runs federations.** A 4-guardian community federation is realistic in 2026, but guardians collectively custody member funds. Operational and regulatory weight, amplified by Block's name on the repo.
-3. **Payment visibility.** Fully E2E-encrypted vs relay-visible receipts (better UX for confirmations and channel tips, leaks metadata).
-4. **Agent wallets.** Technically trivial (an agent is a keypair), but "agent may spend up to N sats" needs a net-new authorization design. NIP-OA's condition grammar only expresses `kind=` and `created_at` bounds ([buzz.md](buzz.md#agent-surface)).
-5. **Kind numbers.** Proposal: new 50000-50999 block ([integration-design.md](integration-design.md#event-kinds)).
+Decided 2026-07-29:
+
+1. **CLI first.** `buzz wallet` subcommands prove the embedding with zero UI work. Desktop follows on the proven crate.
+2. **Per-community federation.** Community admins configure one federation, announced via a NIP-87-style event, and members' wallets auto-join it. Dev and staging run on devimint regtest and Mutinynet. Who custodies real funds is deferred until launch readiness.
+3. **Hybrid payment visibility.** DM payments and receipts are fully E2E-encrypted (relay sees only gift wraps). Channel tips may emit a public marker event (amount, sender, recipient) while the notes stay encrypted to the recipient.
+4. **Agent wallets: design in Phase 3, build later.** The Phase 3 protocol work sketches the spend-policy authorization (NIP-OA extension or a new grant kind, see [buzz.md](buzz.md#agent-surface)) so schemas need no breaking changes when agents arrive. Implementation stays in Phase 5.
+5. **Kind numbers: the 50000-50999 block** as sketched in [integration-design.md](integration-design.md#event-kinds).
 
 ## Risks
 
@@ -36,4 +38,4 @@ Headline findings:
 
 ## Next steps
 
-Phase 0 dependency spike, then a CLI wallet. Full phasing in [integration-design.md](integration-design.md#build-phases).
+Direction is decided, Phase 0 (dependency spike) is unblocked, then the CLI wallet. Full phasing in [integration-design.md](integration-design.md#build-phases).

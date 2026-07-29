@@ -10,3 +10,8 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 - Drafted the recommended architecture (shared `buzz-ecash` crate, wallets on devices, community-to-federation mapping) and build phases in [integration-design.md](integration-design.md).
 - No code written yet. Open decisions in [project.md](project.md).
 - Created public fork `frankhinek/buzz` and rewired remotes (`origin` = fork, `upstream` = block/buzz, which is read-only for us). Pushed this branch to the fork.
+
+## 2026-07-29 - Direction decided
+
+- CLI-first build order, per-community federation config, hybrid payment visibility (E2E DMs, optional public tip markers), agent spend-policy designed in Phase 3 and built in Phase 5, kinds in the 50000-50999 block. Record in [project.md](project.md#decisions).
+- Next up: Phase 0 dependency spike per [integration-design.md](integration-design.md#build-phases).

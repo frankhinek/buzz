@@ -74,7 +74,7 @@ Workspace crypto deps to reconcile with fedimint: `secp256k1` 0.29.1 and 0.31.1 
 
 ## Agent surface
 
-Agents are keypairs authorized via NIP-OA owner attestation (`crates/buzz-sdk/src/nip_oa.rs`). The condition grammar (`nip_oa.rs:36-107`) only expresses `kind=N`, `created_at<N`, `created_at>N`. There is no spend-limit or payment-scope primitive. Agent spending policy is net-new design ([project.md](project.md#open-decisions)).
+Agents are keypairs authorized via NIP-OA owner attestation (`crates/buzz-sdk/src/nip_oa.rs`). The condition grammar (`nip_oa.rs:36-107`) only expresses `kind=N`, `created_at<N`, `created_at>N`. There is no spend-limit or payment-scope primitive. Agent spending policy is net-new design, scheduled for Phase 3 ([project.md](project.md#decisions)).
 
 ## Relay extension points
 

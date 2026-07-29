@@ -1,6 +1,6 @@
 # Integration Design
 
-Proposed architecture for Fedimint e-cash in Buzz. Draft, nothing implemented. Open decisions that gate parts of this live in [project.md](project.md#open-decisions).
+Proposed architecture for Fedimint e-cash in Buzz. Nothing implemented yet. Decision record in [project.md](project.md#decisions).
 
 ## Principles
 
@@ -40,9 +40,9 @@ The DM path needs no relay changes at all (everything rides kind 1059). New kind
 0. **Dependency spike.** Add fedimint 0.11.1 crates to the root workspace and to `desktop/src-tauri`, confirm both resolve. Known hazard: `secp256k1` skew (nostr 0.44 pins 0.29/0.31, fedimint uses the bitcoin 0.32 stack) plus `deny.toml` duplicate checks. Stand up the dev loop: `devimint` / `just mprocs` regtest federation.
 1. **CLI wallet.** `buzz wallet join/balance/spend/reissue` against the regtest federation. Proves the embedding with no UI.
 2. **Desktop wallet.** Tauri commands, keychain seed, send/receive inside DMs, minimal UI.
-3. **Protocol formalization.** Payment envelope schema, receipt + tip kinds, federation discovery event, relay registration, e2e tests in `buzz-test-client`.
+3. **Protocol formalization.** Payment envelope schema, receipt + tip kinds, federation discovery event, relay registration, e2e tests in `buzz-test-client`. Also sketches the agent spend-policy authorization (NIP-OA extension or a new grant kind), design only.
 4. **Mobile.** flutter_rust_bridge infra + wallet screens. The biggest single lift ([buzz.md](buzz.md#clients)).
-5. **Ambitious layer.** Agent wallets with a spend-policy extension to NIP-OA, zap-like tipping UX, Lightning interop via gateway, Mutinynet staging federation.
+5. **Ambitious layer.** Agent wallets (implementing the Phase 3 spend-policy design), zap-like tipping UX, Lightning interop via gateway, Mutinynet staging federation.
 
 ## Non-goals (for now)
 
