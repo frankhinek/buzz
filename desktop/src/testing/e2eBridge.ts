@@ -2906,6 +2906,60 @@ function resetMockMesh() {
   mockMeshState.nodeMode = null;
   mockMeshState.servingUsage = { ...ZERO_SERVING_USAGE };
 }
+
+// E-cash wallet mock (Tauri `wallet_*` commands). Starts with no wallet;
+// `wallet_join` transitions to an open fake federation. Amounts are msat,
+// mirroring the Rust contract in commands/ecash_wallet.rs.
+const MOCK_WALLET_INITIAL_BALANCE_MSAT = 123_456_000;
+const MOCK_WALLET_FEDERATION_ID =
+  "f00dbabe00112233445566778899aabbccddeeff00112233445566778899aabb";
+const mockWalletState: {
+  joined: boolean;
+  balanceMsat: number;
+  spendCounter: number;
+} = {
+  joined: false,
+  balanceMsat: 0,
+  spendCounter: 0,
+};
+
+function resetMockWallet() {
+  mockWalletState.joined = false;
+  mockWalletState.balanceMsat = 0;
+  mockWalletState.spendCounter = 0;
+}
+
+function mockWalletInfo() {
+  return {
+    federation_id: MOCK_WALLET_FEDERATION_ID,
+    name: "Test Federation",
+    network: "regtest",
+    balance_msat: mockWalletState.balanceMsat,
+  };
+}
+
+function requireMockWallet() {
+  if (!mockWalletState.joined) {
+    throw new Error(
+      "no e-cash wallet on this machine — join a federation first",
+    );
+  }
+}
+
+/** Fake notes string; encodes the msat amount so reissue can round-trip it. */
+function mockWalletNotes(amountMsat: number, sequence: number): string {
+  return `mocknotesv0amt${amountMsat}seq${sequence}cashuAeyJ0b2tlbiI6W3sibWludCI6Im1vY2sifV19`;
+}
+
+/** Parse the amount back out of a `mockWalletNotes` string, if it matches. */
+function mockWalletNotesAmount(notes: string): number | null {
+  const match = /^mocknotesv0amt(\d+)seq/.exec(notes.trim());
+  if (!match) {
+    return null;
+  }
+  const amount = Number(match[1]);
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
 let mockPersonas: RawPersona[] = [];
 let mockTeams: RawTeam[] = [];
 // Listeners registered via the mock __TAURI_INTERNALS__.listen — keyed by event name.
@@ -9395,6 +9449,7 @@ export function maybeInstallE2eTauriMocks() {
   seedMockSearchProfiles(config);
   resetMockWorkflows();
   resetMockMesh();
+  resetMockWallet();
   resetMockUserStatuses();
   resetMockPersonaCatalogEvents(config);
   resetMockSaveSubscriptions(config);
@@ -9760,6 +9815,66 @@ export function maybeInstallE2eTauriMocks() {
         mockMeshState.nodeState = "off";
         mockMeshState.nodeMode = null;
         return meshNodeStatus("off", null);
+      case "wallet_status":
+        if (!mockWalletState.joined) {
+          return { state: "none" };
+        }
+        return { state: "open", ...mockWalletInfo() };
+      case "wallet_join": {
+        const inviteCode = (
+          payload as { inviteCode?: string }
+        )?.inviteCode?.trim();
+        if (!inviteCode?.startsWith("fed1")) {
+          throw new Error("invalid invite code: not a valid federation invite");
+        }
+        if (mockWalletState.joined) {
+          throw new Error(
+            `already joined federation ${MOCK_WALLET_FEDERATION_ID}`,
+          );
+        }
+        mockWalletState.joined = true;
+        mockWalletState.balanceMsat = MOCK_WALLET_INITIAL_BALANCE_MSAT;
+        return mockWalletInfo();
+      }
+      case "wallet_balance":
+        requireMockWallet();
+        return { balance_msat: mockWalletState.balanceMsat };
+      case "wallet_info":
+        requireMockWallet();
+        return mockWalletInfo();
+      case "wallet_spend": {
+        requireMockWallet();
+        const amountMsat = (payload as { amountMsat?: number })?.amountMsat;
+        if (!Number.isSafeInteger(amountMsat) || (amountMsat as number) <= 0) {
+          throw new Error("amount_msat must be greater than zero");
+        }
+        const amount = amountMsat as number;
+        if (amount > mockWalletState.balanceMsat) {
+          throw new Error("insufficient balance");
+        }
+        mockWalletState.balanceMsat -= amount;
+        mockWalletState.spendCounter += 1;
+        return {
+          notes: mockWalletNotes(amount, mockWalletState.spendCounter),
+          amount_msat: amount,
+          operation_id: `mock-spend-op-${mockWalletState.spendCounter}`,
+        };
+      }
+      case "wallet_reissue": {
+        requireMockWallet();
+        const notes = (payload as { notes?: string })?.notes ?? "";
+        const amountMsat = mockWalletNotesAmount(notes);
+        if (amountMsat === null) {
+          throw new Error("invalid e-cash notes");
+        }
+        mockWalletState.balanceMsat += amountMsat;
+        return {
+          amount_msat: amountMsat,
+          balance_msat: mockWalletState.balanceMsat,
+        };
+      }
+      case "wallet_lock":
+        return null;
       case "get_identity": {
         const isLost =
           !mockIdentityLostCleared && activeConfig?.mock?.identityLost === true;

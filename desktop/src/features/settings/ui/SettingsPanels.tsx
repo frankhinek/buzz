@@ -21,6 +21,7 @@ import {
   SunMoon,
   Ticket,
   UserRound,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -30,6 +31,7 @@ import type {
 import type { SoundName, SoundSlot } from "@/features/notifications/lib/sound";
 import { CommunityMembersSettingsCard } from "@/features/community-members/ui/CommunityMembersSettingsCard";
 import { CustomEmojiSettingsCard } from "@/features/custom-emoji/ui/CustomEmojiSettingsCard";
+import { EcashWalletSettingsCard } from "@/features/ecash-wallet/ui/EcashWalletSettingsCard";
 import { LocalArchiveSettingsCard } from "@/features/local-archive/ui/LocalArchiveSettingsCard";
 import {
   setThreadViewMode,
@@ -98,6 +100,7 @@ export type SettingsSection =
   | "moderation"
   | "custom-emoji"
   | "local-archive"
+  | "wallet"
   | "mobile"
   | "updates";
 
@@ -117,6 +120,7 @@ const SETTINGS_SECTION_VALUES: readonly SettingsSection[] = [
   "moderation",
   "custom-emoji",
   "local-archive",
+  "wallet",
   "mobile",
   "updates",
 ];
@@ -219,6 +223,11 @@ export const settingsSections: SettingsSectionDescriptor[] = [
     value: "local-archive",
     label: "Local archive",
     icon: Archive,
+  },
+  {
+    value: "wallet",
+    label: "Wallet",
+    icon: Wallet,
   },
   {
     value: "mobile",
@@ -837,6 +846,8 @@ export function renderSettingsSection(
       return <CustomEmojiSettingsCard />;
     case "local-archive":
       return <LocalArchiveSettingsCard />;
+    case "wallet":
+      return <EcashWalletSettingsCard />;
     case "mobile":
       return <MobilePairingCard currentPubkey={props.currentPubkey} />;
     case "updates":
