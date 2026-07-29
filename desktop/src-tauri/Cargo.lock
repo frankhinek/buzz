@@ -1357,14 +1357,19 @@ dependencies = [
 name = "buzz-ecash"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "fedimint-bip39",
  "fedimint-client",
+ "fedimint-connectors",
  "fedimint-core",
  "fedimint-ln-client",
  "fedimint-lnv2-client",
  "fedimint-mint-client",
  "fedimint-rocksdb",
+ "futures-util",
+ "serde",
  "socket2 0.5.10",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

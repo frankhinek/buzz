@@ -358,6 +358,7 @@ pub fn run() {
         .manage(BuilderlabSession::default())
         .manage(BuilderlabLogin::default())
         .manage(commands::pairing::PairingHandle::new())
+        .manage(commands::ecash_wallet::WalletManager::new())
         .setup(move |app| {
             let app_handle = app.handle().clone();
 
@@ -872,6 +873,13 @@ pub fn run() {
             start_pairing,
             confirm_pairing_sas,
             cancel_pairing,
+            wallet_status,
+            wallet_join,
+            wallet_balance,
+            wallet_info,
+            wallet_spend,
+            wallet_reissue,
+            wallet_lock,
             apply_workspace,
             validate_repos_dir,
             get_active_workspace,
