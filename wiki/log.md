@@ -48,3 +48,10 @@ Append-only. Newest entry at the bottom. Prefix entries with `YYYY-MM-DD`.
 
 - Drafted [payment-protocol.md](payment-protocol.md): 50001 payment envelope (gift-wrapped rumor, never relay-visible), 50002 receipt, 50003 public tip marker, 38173 NIP-87 federation announcement (admin-gated), 38180 agent spend-grant sketch. Five open questions listed for Frank's review; no implementation yet.
 - Frank approved: group DMs out of scope for Phase 3, and desktop-first shipping. Auto-claim, tip-marker optimism, and the spend-grant kind question remain open.
+
+## 2026-07-30 - Multi-device model settled
+
+- Explored aggregate balances, a relay note pool (NIP-60-style, rejected: rotation fees, pool conflicts, nsec-alone theft), and per-device wallets before settling on **single treasury**: one designated wallet device, others show a pointer + balance via new designation kind 38181 (author-only, encrypted to self).
+- Auto-claim approved, treasury-scoped (P2P-app precedent; destroys bearer data fastest; no self-racing).
+- **Spend-anywhere float** designed (denominated pre-spent bundles encrypted to self, NWC-budget-like, kind 38182 reserved, `notes` became an array in 50001) but deferred to a new Phase 6, re-evaluate before building. Phase 4 mobile stays single-wallet and gains mnemonic export/backup.
+- Remaining open questions: tip-marker optimism, spend-grant kind vs NIP-OA.

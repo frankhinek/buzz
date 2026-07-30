@@ -33,6 +33,12 @@ Decided 2026-07-29:
 4. **Agent wallets: design in Phase 3, build later.** The Phase 3 protocol work sketches the spend-policy authorization (NIP-OA extension or a new grant kind, see [buzz.md](buzz.md#agent-surface)) so schemas need no breaking changes when agents arrive. Implementation stays in Phase 5.
 5. **Kind numbers: the 50000-50999 block** as sketched in [integration-design.md](integration-design.md#event-kinds).
 
+Decided 2026-07-30:
+
+6. **Multi-device: single treasury.** One designated wallet device per user; other devices show a pointer plus the treasury's balance via a designation event. Multi-wallet and aggregate UX rejected; relay note pool parked ([payment-protocol.md](payment-protocol.md#multi-device-model)).
+7. **Auto-claim approved**, scoped to the treasury device. Flood hardening deferred as client-side work.
+8. **Spend-anywhere float deferred to Phase 6** (re-evaluate first). Schema future-proofed now: `notes` array in the payment envelope, kinds 38181/38182 reserved.
+
 ## Risks
 
 - Pre-1.0 API churn in fedimint crates, exact-version lockstep pinning, quarterly bump ritual. Phase 0 confirmed a second cost: fedimint's exact iroh pins (0.35 + 0.90) drag in old duplicates carrying RUSTSEC advisories, so each fedimint bump means re-triaging `deny.toml` ignores.

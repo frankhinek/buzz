@@ -34,12 +34,13 @@ Standard NIP-59 nesting: gift wrap (1059, ephemeral key, p-gated to recipient) -
     ["h", "<dm channel uuid>"],
     ["e", "<tipped message id>", "", "tip"]
   ],
-  "content": "{\"v\":1,\"federation_id\":\"<64-hex>\",\"amount_msat\":21000,\"notes\":\"<OOBNotes string>\",\"invite_code\":\"fed1...\",\"memo\":\"thanks!\",\"expires_at\":1753886400}"
+  "content": "{\"v\":1,\"federation_id\":\"<64-hex>\",\"amount_msat\":21000,\"notes\":[\"<OOBNotes string>\"],\"invite_code\":\"fed1...\",\"memo\":\"thanks!\",\"expires_at\":1753886400}"
 }
 ```
 
 - `h` is optional (anchors the payment into a DM channel timeline); the `e` tip tag is present only when the payment funds a channel tip (see 50003).
-- `amount_msat` is the note face value. `invite_code` is optional (fallback for recipients not yet in the federation; usually redundant with 38173).
+- `notes` is an **array** of OOBNotes strings, all from `federation_id`. Phase 3 senders emit exactly one; the array exists so the future spend-anywhere float can compose exact amounts from denominated bundles (see multi-device model). Recipients reissue every entry; the receipt reports the total actually claimed.
+- `amount_msat` is the total note face value. `invite_code` is optional (fallback for recipients not yet in the federation; usually redundant with 38173).
 - `expires_at` mirrors the sender's `try_cancel_after` horizon: after this time the sender's wallet auto-reclaims unclaimed notes. Recipients should claim immediately; claims race cancellation near expiry.
 
 Recipient flow: unwrap -> check `federation_id` against wallet (offer join via 38173/`invite_code` if absent) -> reissue immediately (auto-claim; deferring loses the race and leaves bearer data at rest) -> send a 50002 receipt. Double-processing the same envelope is safe: the second reissue fails at the federation, and the client should treat already-claimed as success if it was the claimer.
@@ -107,6 +108,16 @@ Enforcement cannot live at the relay (spends are wallet-local and federation-sid
 
 Design only in Phase 3; implementation is Phase 5.
 
+## Multi-device model
+
+One nsec, many devices: NIP-AB pairing copies the identity, so every device decrypts payment envelopes. Fedimint clients cannot share a root secret (a client is a live state machine over a local db; recovery is a rescan, not sync), so wallets are inherently per-device. The model, settled 2026-07-30:
+
+- **Exactly one treasury.** The device that joined the federation is the wallet device; the user's other devices show a pointer ("your wallet is on iPhone") plus the treasury's balance, never a wallet of their own. Recommended default treasury once mobile exists: the phone (most online, most at hand). Multi-wallet and aggregate-balance UX were rejected as permanently confusing (balance must have one answer).
+- **Auto-claim, treasury only.** The treasury reissues incoming envelopes immediately on unwrap. Rationale: mainstream P2P apps (Venmo, Cash App) auto-credit, so the consent concern is settled by precedent; immediate claim destroys bearer data fastest and wins the sender-cancel race. Scoping claims to the treasury removes self-racing entirely. Flood hardening (client-side rate limit on reissue attempts per sender) is deferred until it matters; no protocol impact.
+- **38181 `KIND_ECASH_WALLET_DESIGNATION`** (parameterized replaceable, author-only, content NIP-44 to self): `d` = federation id, content `{v, device_id, device_label, balance_msat, updated_at}`. Gives every device the same balance number and names the treasury. Device ids are generated at wallet creation; duplicate ids across snapshots indicate a cloned machine (a fedimint hazard worth warning about). Moving the treasury is a deliberate later flow (sweep via a self-addressed envelope).
+- **Future: spend-anywhere float (Phase 6, re-evaluate first).** Designed, not implemented: the treasury pre-spends small denominated OOBNotes bundles with long expiries and publishes them encrypted to self; any device composes exact amounts from bundles (why `notes` is an array), marks them used via an LWW self-event, and sends without the treasury or the federation in the loop. The payee reissues. Exposure is bounded to the float (nsec compromise cannot reach the treasury), semantics are NWC-like (a spending budget that does not return to the root wallet), and an offline sender can even hand envelopes over QR. Costs to weigh at re-evaluation: top-up fees on fee-charging federations (each denomination bundle is its own spend), bundle-expiry bookkeeping (a payment's expiry must fit inside its bundles' remaining lifetime), race-then-retry when two devices grab the same bundle. Kind 38182 `KIND_ECASH_FLOAT_BUNDLE` is reserved.
+- **Parked: relay note pool** (all notes published encrypted to self, any device spends any note). Rejected for now: every balance change becomes a fee-bearing rotation, concurrent pool updates conflict, and nsec compromise alone would expose the entire balance. Revisit alongside P2PK-style recipient locking if fedimint ever grows it.
+
 ## Review status
 
 Approved by Frank 2026-07-29:
@@ -114,8 +125,12 @@ Approved by Frank 2026-07-29:
 - **Group DMs are out of scope** for Phase 3 (notes are single-claimer; a group payment is first-reader-wins). 1:1 DM payments only.
 - **Desktop-first shipping.** Kind 1059 is not in the mobile kind mirror today, so mobile cannot see DM payments until the FRB wallet work (Phase 4) plus gift-wrap support land.
 
+Approved by Frank 2026-07-30:
+
+- **Auto-claim on unwrap**, scoped to the treasury device (see multi-device model).
+- **Single-treasury multi-device model**; spend-anywhere float deferred to Phase 6; relay note pool parked.
+
 Still open:
 
-1. **Auto-claim on unwrap** (proposed: yes, immediately) vs claim-on-view. Auto-claim wins the cancel race and removes bearer data fastest, but means receiving a DM moves money without a user gesture.
-2. **Tip marker optimism**: marker renders before any proof of claim. Acceptable for tips, or should tips wait for a public-ish acknowledgment (which leaks recipient wallet activity)?
-3. **Kind 38180 vs extending NIP-OA** for the spend grant.
+1. **Tip marker optimism**: marker renders before any proof of claim. Acceptable for tips, or should tips wait for a public-ish acknowledgment (which leaks recipient wallet activity)?
+2. **Kind 38180 vs extending NIP-OA** for the spend grant.

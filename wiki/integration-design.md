@@ -41,8 +41,9 @@ The DM path needs no relay changes at all (everything rides kind 1059). New kind
 1. **CLI wallet.** `buzz wallet join/balance/spend/reissue` against the regtest federation. Proves the embedding with no UI.
 2. **Desktop wallet.** Tauri commands, keychain seed, send/receive inside DMs, minimal UI.
 3. **Protocol formalization.** Payment envelope schema, receipt + tip kinds, federation discovery event, relay registration, e2e tests in `buzz-test-client`. Also sketches the agent spend-policy authorization (NIP-OA extension or a new grant kind), design only.
-4. **Mobile.** flutter_rust_bridge infra + wallet screens. The biggest single lift ([buzz.md](buzz.md#clients)).
+4. **Mobile.** flutter_rust_bridge infra + wallet screens. Still a single wallet device; the phone becomes the recommended treasury ([payment-protocol.md](payment-protocol.md#multi-device-model)). Includes mnemonic export/backup, which gates real funds. The biggest single lift ([buzz.md](buzz.md#clients)).
 5. **Ambitious layer.** Agent wallets (implementing the Phase 3 spend-policy design), zap-like tipping UX, Lightning interop via gateway, Mutinynet staging federation.
+6. **Spend-anywhere float.** Re-evaluate, then implement the pre-funded float from [payment-protocol.md](payment-protocol.md#multi-device-model): denominated note bundles encrypted to self so any device can spend without the treasury online.
 
 ## Phase 0 findings
 
